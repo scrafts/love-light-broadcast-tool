@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "target": "ES2022",
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "outDir": "../dist-electron",
+        "skipLibCheck": true,
+        "strict": true,
+        "allowJs": true,
+        "sourceMap": true,
+        "noEmit": false
+    },
+    "include": [
+        "**/*"
+    ]
+}

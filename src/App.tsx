@@ -1,0 +1,229 @@
+import React, { useState, useEffect } from 'react';
+import { BIBLE_STRUCTURE } from './data/bibleData';
+import { CHURCH_NAME_KO, CHURCH_NAME_EN, FRIDAY_NOTICE } from './constants';
+import { getWeekday, formatDate, formatSongTitle, formatClosingSong } from './utils';
+
+// Components
+import { WorshipInfo } from './components/WorshipInfo';
+import { SongList } from './components/SongList';
+import { ClosingInfo } from './components/ClosingInfo';
+import { ResultDisplay } from './components/ResultDisplay';
+
+type Passage = {
+    book: string;
+    chapter: string | number;
+    verseStart: string | number;
+    verseEnd: string | number;
+};
+
+const formatVerseRange = (passage: Passage) => {
+    const vStart = String(passage.verseStart).trim();
+    const vEnd = String(passage.verseEnd).trim();
+    const isSingle = vStart === vEnd || vEnd === '';
+
+    return isSingle ? vStart : `${vStart}~${vEnd}`;
+};
+
+const formatPassages = (passages: Passage[]) => {
+    return passages.map((passage, index) => {
+        const verseRange = formatVerseRange(passage);
+        const chapter = String(passage.chapter).trim();
+        const previous = passages[index - 1];
+
+        if (previous?.book === passage.book) {
+            const previousChapter = String(previous.chapter).trim();
+
+            if (previousChapter === chapter) {
+                return verseRange;
+            }
+
+            return `${chapter}:${verseRange}`;
+        }
+
+        return `${passage.book} ${chapter}:${verseRange}`;
+    }).join(', ');
+};
+
+export default function App() {
+    // --- State Management ---
+
+    // 예배 정보
+    const [title, setTitle] = useState('');
+
+    // 다중 본문 관리
+    const [passages, setPassages] = useState([{
+        book: '창세기',
+        chapter: 1,
+        verseStart: 1,
+        verseEnd: 1
+    }]);
+
+    const [leaderSelection, setLeaderSelection] = useState('송윤명 목사');
+    const [leaderCustom, setLeaderCustom] = useState('');
+
+    const [date, setDate] = useState(new Date());
+
+    const [worshipTypeSelection, setWorshipTypeSelection] = useState('주일예배');
+    const [worshipTypeCustom, setWorshipTypeCustom] = useState('');
+
+    // 찬양 목록
+    const [songs, setSongs] = useState<string[]>(['']);
+
+    // 후반부 찬양/헌금
+    const [closingSong, setClosingSong] = useState('');
+    const [isLovePraiseTeam, setIsLovePraiseTeam] = useState(false);
+
+    // UI 상태
+    const [copyStatus, setCopyStatus] = useState<string>('');
+
+    // --- Effects ---
+
+    // 날짜 변경 시 예배 형태 자동 설정
+    useEffect(() => {
+        const day = getWeekday(date);
+        if (day === 0) setWorshipTypeSelection('주일예배');
+        else if (day === 3) setWorshipTypeSelection('수요예배');
+        else if (day === 5) setWorshipTypeSelection('금요예배');
+    }, [date]);
+
+    // 예배 형태 변경 시 사랑찬양단 초기화
+    useEffect(() => {
+        setIsLovePraiseTeam(false);
+    }, [worshipTypeSelection, worshipTypeCustom]);
+
+    // --- Handlers ---
+
+    const handleSongChange = (index: number, value: string) => {
+        const newSongs = [...songs];
+        newSongs[index] = value;
+        setSongs(newSongs);
+    };
+
+    const addSong = (index?: number) => {
+        if (typeof index === 'number') {
+            const newSongs = [...songs];
+            newSongs.splice(index + 1, 0, ''); // 해당 인덱스 바로 뒤에 추가
+            setSongs(newSongs);
+        } else {
+            setSongs([...songs, '']); // 맨 뒤에 추가
+        }
+    };
+
+    const removeSong = (index: number) => {
+        if (songs.length === 1) {
+            setSongs(['']);
+            return;
+        }
+        setSongs(songs.filter((_, i) => i !== index));
+    };
+
+    const copyToClipboard = async (text: string, label: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopyStatus(`${label} 복사 완료!`);
+            setTimeout(() => setCopyStatus(''), 3000);
+        } catch (err) {
+            setCopyStatus('복사 실패');
+            console.error(err);
+        }
+    };
+
+    // --- Generators ---
+
+    // 실제 사용할 값
+    const effectiveLeader = leaderSelection === '기타' ? leaderCustom : leaderSelection;
+    const effectiveWorshipType = worshipTypeSelection === '기타' ? worshipTypeCustom : worshipTypeSelection;
+
+    const isFriday = effectiveWorshipType.includes('금요');
+    const isSunday = effectiveWorshipType.includes('주일');
+    const isFridayOrSunday = isFriday || isSunday;
+
+    const generateTitleString = () => {
+        const formattedDate = formatDate(date);
+        const verseParts = formatPassages(passages);
+
+        return `[LIVE] ${title} | ${verseParts} | ${effectiveLeader} | ${formattedDate} | ${CHURCH_NAME_KO} ${effectiveWorshipType}`;
+    };
+
+    const generateDescriptionString = () => {
+        const formattedSongs = songs
+            .filter(s => s.trim() !== '')
+            .map((s, i) => `${i + 1}. ${formatSongTitle(s)}`)
+            .join('\n\n');
+
+        let formattedClosing = '';
+
+        if (isLovePraiseTeam) {
+            formattedClosing = '사랑찬양단';
+        } else if (closingSong.trim()) {
+            formattedClosing = formatClosingSong(closingSong);
+        }
+
+        let sectionHeader = '';
+        if (isFriday) {
+            sectionHeader = '[찬양과 기도]';
+        } else if (isSunday) {
+            sectionHeader = '[헌금]';
+        }
+
+        let closingPart = '';
+        if (sectionHeader && formattedClosing) {
+            closingPart = `\n\n${sectionHeader}\n\n${formattedClosing}`;
+        }
+
+        const fridayNotice = isFriday ? `\n\n${FRIDAY_NOTICE}` : '';
+        const verseParts = formatPassages(passages);
+
+        return `교회/단체 명 : ${CHURCH_NAME_EN}${fridayNotice}\n\n\n` +
+            `[경배와 찬양]\n\n${formattedSongs}\n\n` +
+            `[성경 봉독 및 말씀 선포]\n\n` +
+            `제목: ${title}\n\n` +
+            `본문: ${verseParts}` +
+            `${closingPart}`;
+    };
+
+    return (
+        <div className="app-container">
+            <div className="flex flex-column gap-20">
+                <WorshipInfo
+                    title={title} setTitle={setTitle}
+                    leaderSelection={leaderSelection} setLeaderSelection={setLeaderSelection}
+                    leaderCustom={leaderCustom} setLeaderCustom={setLeaderCustom}
+                    passages={passages} setPassages={setPassages}
+                    date={date} setDate={setDate}
+                    worshipTypeSelection={worshipTypeSelection} setWorshipTypeSelection={setWorshipTypeSelection}
+                    worshipTypeCustom={worshipTypeCustom} setWorshipTypeCustom={setWorshipTypeCustom}
+                />
+
+                {isFridayOrSunday && (
+                    <ClosingInfo
+                        isFriday={isFriday}
+                        isSunday={isSunday}
+                        closingSong={closingSong}
+                        setClosingSong={setClosingSong}
+                        isLovePraiseTeam={isLovePraiseTeam}
+                        setIsLovePraiseTeam={setIsLovePraiseTeam}
+                    />
+                )}
+            </div>
+
+            <div className="flex flex-column gap-20">
+                <SongList
+                    songs={songs}
+                    onSongChange={handleSongChange}
+                    onAddSong={addSong}
+                    onRemoveSong={removeSong}
+                />
+
+                <ResultDisplay
+                    date={date}
+                    worshipType={effectiveWorshipType}
+                    titleResult={generateTitleString()}
+                    descriptionResult={generateDescriptionString()}
+                    onCopy={copyToClipboard}
+                    copyStatus={copyStatus}
+                />
+            </div>
+        </div>
+    );
+}
