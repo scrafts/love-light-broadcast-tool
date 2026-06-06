@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 
 function createWindow() {
@@ -27,6 +28,10 @@ function createWindow() {
 
 app.whenReady().then(() => {
     createWindow();
+
+    if (app.isPackaged) {
+        autoUpdater.checkForUpdatesAndNotify();
+    }
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
