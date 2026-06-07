@@ -1,11 +1,11 @@
 {
   "name": "app",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "tsc && vite build && tsc -p electron/tsconfig.json && electron-builder",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:3000 && tsc -p electron/tsconfig.json && electron .\"",
     "electron:build": "tsc && vite build && tsc -p electron/tsconfig.json && electron-builder"
@@ -34,6 +34,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
+    "es-hangul": "^2.3.3",
     "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },

@@ -184,7 +184,7 @@ export default function App() {
 
     return (
         <div className="app-container">
-            <div className="flex flex-column gap-20">
+            <div className="flex flex-column gap-20 top-input-stack">
                 <WorshipInfo
                     title={title} setTitle={setTitle}
                     leaderSelection={leaderSelection} setLeaderSelection={setLeaderSelection}
@@ -195,34 +195,34 @@ export default function App() {
                     worshipTypeCustom={worshipTypeCustom} setWorshipTypeCustom={setWorshipTypeCustom}
                 />
 
-                {isFridayOrSunday && (
-                    <ClosingInfo
-                        isFriday={isFriday}
-                        isSunday={isSunday}
-                        closingSong={closingSong}
-                        setClosingSong={setClosingSong}
-                        isLovePraiseTeam={isLovePraiseTeam}
-                        setIsLovePraiseTeam={setIsLovePraiseTeam}
+                <div className="bottom-tools-row">
+                    <SongList
+                        songs={songs}
+                        onSongChange={handleSongChange}
+                        onAddSong={addSong}
+                        onRemoveSong={removeSong}
                     />
-                )}
-            </div>
 
-            <div className="flex flex-column gap-20">
-                <SongList
-                    songs={songs}
-                    onSongChange={handleSongChange}
-                    onAddSong={addSong}
-                    onRemoveSong={removeSong}
-                />
+                    {isFridayOrSunday && (
+                        <ClosingInfo
+                            isFriday={isFriday}
+                            isSunday={isSunday}
+                            closingSong={closingSong}
+                            setClosingSong={setClosingSong}
+                            isLovePraiseTeam={isLovePraiseTeam}
+                            setIsLovePraiseTeam={setIsLovePraiseTeam}
+                        />
+                    )}
 
-                <ResultDisplay
-                    date={date}
-                    worshipType={effectiveWorshipType}
-                    titleResult={generateTitleString()}
-                    descriptionResult={generateDescriptionString()}
-                    onCopy={copyToClipboard}
-                    copyStatus={copyStatus}
-                />
+                    <ResultDisplay
+                        date={date}
+                        worshipType={effectiveWorshipType}
+                        titleResult={generateTitleString()}
+                        descriptionResult={generateDescriptionString()}
+                        onCopy={copyToClipboard}
+                        copyStatus={copyStatus}
+                    />
+                </div>
             </div>
         </div>
     );

@@ -116,7 +116,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
   return (
     <>
       <section className="glass-card">
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap copy-actions">
         <button
           onClick={() => onCopy(titleResult, '방송 제목')}
           className="btn btn-primary"
@@ -127,7 +127,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
 
         <button
           onClick={() => onCopy(descriptionResult, '방송 설명')}
-          className="btn btn-success"
+          className="btn btn-primary"
           style={{ flex: 1, minWidth: '120px' }}
         >
           방송 설명 복사
@@ -138,31 +138,26 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
             setShowYoutubeInput(prev => !prev);
             setYoutubeLinkError('');
           }}
-          className="btn"
-          style={{
-            flex: 1,
-            minWidth: '120px',
-            backgroundColor: '#FEE500',
-            color: '#000000'
-          }}
+          className="btn btn-primary"
+          style={{ flex: 1, minWidth: '120px' }}
         >
           {showYoutubeInput ? '복사 취소' : '카톡 링크 복사'}
         </button>
 
         <button
           onClick={() => setShowWorshipClockFullScreen(true)}
-          className="btn"
-          style={{ flex: 1, minWidth: '120px', backgroundColor: '#8b5cf6', color: '#ffffff' }}
+          className="btn btn-secondary"
+          style={{ flex: 1, minWidth: '120px' }}
         >
           시계 보기
         </button>
       </div>
 
       {showYoutubeInput && (
-        <div style={{ marginTop: '16px', padding: '16px', backgroundColor: 'rgba(254, 229, 0, 0.1)', borderRadius: '12px', border: '1px solid rgba(254, 229, 0, 0.2)' }}>
+        <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
           <div className="flex justify-between items-center mb-2">
-            <label className="input-label" style={{ color: '#FEE500', marginBottom: 0 }}>유튜브 링크 입력</label>
-            <label className="flex items-center cursor-pointer text-xs" style={{ color: '#94a3b8' }}>
+            <label className="input-label" style={{ marginBottom: 0 }}>유튜브 링크 입력</label>
+            <label className="flex items-center cursor-pointer text-xs" style={{ color: '#64748b' }}>
               <input
                 type="checkbox"
                 checked={isBasicOnly}
@@ -186,8 +181,8 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
             />
             <button
               onClick={handleKakaoCopy}
-              className="btn"
-              style={{ backgroundColor: '#FEE500', color: '#000000', padding: '10px 16px' }}
+              className="btn btn-primary"
+              style={{ padding: '10px 16px' }}
             >
               완료
             </button>

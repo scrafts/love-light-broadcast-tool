@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BIBLE_STRUCTURE, BIBLE_BOOK_METADATA } from '../data/bibleData';
+import { BIBLE_STRUCTURE } from '../data/bibleData';
+import { canProceedToNextField, getDropdownItems, getValidBookName, shouldShowDropdown } from '../data/bibleSearch';
 
 interface Passage {
   book: string;
@@ -31,22 +32,60 @@ const BibleBookSearch: React.FC<{
 }> = ({ value, onSelect }) => {
   const [searchTerm, setSearchTerm] = useState(value);
   const [showResults, setShowResults] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSearchTerm(value);
   }, [value]);
 
-  const results = searchTerm.trim() === '' ? [] : BIBLE_BOOK_METADATA.filter(b =>
-    b.name.includes(searchTerm) ||
-    b.abbr === searchTerm ||
-    b.enName.includes(searchTerm.toLowerCase()) ||
-    b.enAbbr === searchTerm.toLowerCase()
-  );
+  const results = getDropdownItems(searchTerm);
+
+  useEffect(() => {
+    setSelectedIndex(results.length === 1 ? 0 : -1);
+  }, [searchTerm, results.length]);
+
+  const commitSelection = (nextIndex = selectedIndex) => {
+    if (!canProceedToNextField(searchTerm, nextIndex)) return false;
+
+    const validBookName = getValidBookName(searchTerm, nextIndex);
+    if (!validBookName) return false;
+
+    setSearchTerm(validBookName);
+    onSelect(validBookName);
+    setShowResults(false);
+    return true;
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.key === 'Enter' || e.key === 'Tab') && results.length === 1) {
-      onSelect(results[0].name);
+    if (e.key === 'ArrowDown' && results.length > 0) {
+      e.preventDefault();
+      setShowResults(true);
+      setSelectedIndex(prev => (prev + 1) % results.length);
+      return;
+    }
+
+    if (e.key === 'ArrowUp' && results.length > 0) {
+      e.preventDefault();
+      setShowResults(true);
+      setSelectedIndex(prev => (prev <= 0 ? results.length - 1 : prev - 1));
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitSelection();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      if (!commitSelection() && searchTerm.trim() !== '') {
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'Escape') {
       setShowResults(false);
     }
   };
@@ -62,13 +101,26 @@ const BibleBookSearch: React.FC<{
         }}
         onFocus={() => setShowResults(true)}
         onKeyDown={handleKeyDown}
-        onBlur={() => setTimeout(() => setShowResults(false), 200)}
+        onBlur={() => setTimeout(() => {
+          commitSelection();
+          setShowResults(false);
+        }, 200)}
         placeholder="책 이름 또는 약어"
       />
-      {showResults && results.length > 0 && (
+      {showResults && shouldShowDropdown(searchTerm) && (
         <ul className="search-results-dropdown">
-          {results.map(b => (
-            <li key={b.name} onClick={() => { onSelect(b.name); setShowResults(false); }}>
+          {results.map((b, index) => (
+            <li
+              key={b.name}
+              className={index === selectedIndex ? 'selected' : undefined}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setSelectedIndex(index)}
+              onClick={() => {
+                setSearchTerm(b.name);
+                onSelect(b.name);
+                setShowResults(false);
+              }}
+            >
               {b.name} ({b.abbr})
             </li>
           ))}
@@ -88,7 +140,8 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
   worshipTypeCustom, setWorshipTypeCustom
 }) => {
   const [errors, setErrors] = useState<{ [key: number]: string }>({});
-  const [isMetadataEditable, setIsMetadataEditable] = useState(false);
+  const [isMetadataExpanded, setIsMetadataExpanded] = useState(false);
+  const isMetadataEditable = isMetadataExpanded;
 
   const dateValue = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -105,17 +158,20 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
     setPassages(newPassages);
   };
 
+  const digitsOnly = (value: string) => value.replace(/\D/g, '');
+
   const getMaxVerses = (passage: Passage) => {
     const chapter = Number(passage.chapter);
     return BIBLE_STRUCTURE[passage.book]?.[chapter - 1] || 0;
   };
 
   const handleVerseStartChange = (index: number, value: string) => {
+    const numericValue = digitsOnly(value);
     const maxVerses = getMaxVerses(passages[index]);
-    const verseStart = Number(value);
+    const verseStart = Number(numericValue);
     const nextValue = maxVerses > 0 && Number.isFinite(verseStart) && verseStart > maxVerses
       ? maxVerses
-      : value;
+      : numericValue;
 
     updatePassage(index, {
       verseStart: nextValue,
@@ -124,15 +180,16 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
   };
 
   const handleVerseEndChange = (index: number, value: string) => {
+    const numericValue = digitsOnly(value);
     const maxVerses = getMaxVerses(passages[index]);
-    const verseEnd = Number(value);
+    const verseEnd = Number(numericValue);
 
     if (maxVerses > 0 && Number.isFinite(verseEnd) && verseEnd > maxVerses) {
       updatePassage(index, { verseEnd: maxVerses });
       return;
     }
 
-    updatePassage(index, { verseEnd: value });
+    updatePassage(index, { verseEnd: numericValue });
   };
 
   const addPassage = () => {
@@ -186,14 +243,13 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
         />
       </div>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <div className="flex justify-between items-center mb-2">
-          <label className="input-label" style={{ marginBottom: 0 }}>성경 본문</label>
+      <div style={{ marginBottom: '0.5rem' }}>
+        <div className="flex justify-end items-center mb-2">
           <button onClick={addPassage} className="btn btn-secondary text-xs" style={{ padding: '4px 8px' }}>+ 본문 추가</button>
         </div>
 
         {passages.map((p, idx) => (
-          <div key={idx} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: idx < passages.length - 1 ? '1px border-white/10' : 'none' }}>
+          <div key={idx} style={{ marginBottom: '0.5rem', paddingBottom: '0.5rem', borderBottom: idx < passages.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
             <div className="input-group grid-cols-5 items-end">
               <div>
                 <label className="input-label">본문(책)</label>
@@ -203,8 +259,10 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
                 <label className="input-label">장</label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={p.chapter}
-                  onChange={(e) => updatePassage(idx, { chapter: e.target.value })}
+                  onChange={(e) => updatePassage(idx, { chapter: digitsOnly(e.target.value) })}
                   onBlur={() => handleBlur(idx)}
                 />
               </div>
@@ -212,6 +270,8 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
                 <label className="input-label">시작 절</label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={p.verseStart}
                   onChange={(e) => handleVerseStartChange(idx, e.target.value)}
                   onBlur={() => handleBlur(idx)}
@@ -221,6 +281,8 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
                 <label className="input-label">끝 절</label>
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={p.verseEnd}
                   onChange={(e) => handleVerseEndChange(idx, e.target.value)}
                   onBlur={() => handleBlur(idx)}
@@ -246,18 +308,19 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
       <div className="flex justify-between items-center mb-2 mt-4">
         <label className="input-label" style={{ marginBottom: 0 }}>기본 예배 정보</label>
         <button
-          onClick={() => setIsMetadataEditable(!isMetadataEditable)}
-          className={`btn ${isMetadataEditable ? 'btn-primary' : 'btn-secondary'} text-xs`}
+          onClick={() => setIsMetadataExpanded(!isMetadataExpanded)}
+          className="btn btn-secondary text-xs"
           style={{ padding: '4px 8px' }}
         >
-          {isMetadataEditable ? '🔓 수정 중 (잠그기)' : '🔒 수정하기'}
+          {isMetadataExpanded ? '접기' : '펼치기'}
         </button>
       </div>
 
-      <div className="input-group grid-cols-3" style={{ opacity: isMetadataEditable ? 1 : 0.7 }}>
+      {isMetadataExpanded && (
+      <div className="input-group grid-cols-3">
         <div>
           <label className="input-label">인도자</label>
-          <div className="flex gap-2">
+          <div className="flex flex-column gap-2">
             <select
               value={leaderSelection}
               onChange={(e) => setLeaderSelection(e.target.value)}
@@ -296,7 +359,7 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
 
         <div>
           <label className="input-label">예배 형태</label>
-          <div className="flex gap-2">
+          <div className="flex flex-column gap-2">
             <select
               value={worshipTypeSelection}
               onChange={(e) => setWorshipTypeSelection(e.target.value)}
@@ -323,6 +386,7 @@ export const WorshipInfo: React.FC<WorshipInfoProps> = ({
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 };
