@@ -15,7 +15,8 @@ const formatClockTime = (date: Date) => {
   return `${padTime(date.getHours())}:${padTime(date.getMinutes())}:${padTime(date.getSeconds())}`;
 };
 
-const formatOffset = (offsetSeconds: number) => {
+const formatOffset = (offsetMilliseconds: number) => {
+  const offsetSeconds = Math.round(offsetMilliseconds / 1000);
   const absSeconds = Math.abs(offsetSeconds);
 
   if (offsetSeconds > 0) return `디지털 시계가 컴퓨터보다 ${absSeconds}초 빠릅니다.`;
@@ -38,7 +39,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
   const [youtubeLinkError, setYoutubeLinkError] = useState('');
   const [showDvrReminder, setShowDvrReminder] = useState(false);
   const [isClockCalibrationActive, setIsClockCalibrationActive] = useState(false);
-  const [clockOffsetSeconds, setClockOffsetSeconds] = useState(0);
+  const [clockOffsetMilliseconds, setClockOffsetMilliseconds] = useState(0);
   const [hasClockCalibration, setHasClockCalibration] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const [customWorshipTime, setCustomWorshipTime] = useState('');
@@ -50,7 +51,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
   const defaultWorshipTime = isWednesdayWorship ? '20:00' : isFridayWorship ? '21:00' : '11:30';
   const effectiveWorshipTime = customWorshipTime || defaultWorshipTime;
   const [worshipHour, worshipMinute] = effectiveWorshipTime.split(':').map(Number);
-  const adjustedNow = new Date(now.getTime() + clockOffsetSeconds * 1000);
+  const adjustedNow = new Date(now.getTime() + clockOffsetMilliseconds);
   const worshipStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), worshipHour, worshipMinute, 0, 0);
   const timeUntilWorship = worshipStart.getTime() - adjustedNow.getTime();
 
@@ -78,9 +79,9 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
 
       const pressedAt = new Date();
       const nearestMinute = Math.round(pressedAt.getTime() / 60000) * 60000;
-      const offsetSeconds = Math.round((nearestMinute - pressedAt.getTime()) / 1000);
+      const offsetMilliseconds = nearestMinute - pressedAt.getTime();
 
-      setClockOffsetSeconds(offsetSeconds);
+      setClockOffsetMilliseconds(offsetMilliseconds);
       setHasClockCalibration(true);
       setNow(pressedAt);
       setIsClockCalibrationActive(false);
@@ -290,16 +291,16 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
                 : hasClockCalibration
                   ? (
                     <div className="flex gap-2 items-center justify-center flex-wrap">
-                      <span>{formatOffset(clockOffsetSeconds)}</span>
+                      <span>{formatOffset(clockOffsetMilliseconds)}</span>
                       <button
-                        onClick={() => setClockOffsetSeconds(prev => prev + 60)}
+                        onClick={() => setClockOffsetMilliseconds(prev => prev + 60000)}
                         className="btn btn-secondary"
                         style={{ padding: '8px 12px', fontSize: '14px' }}
                       >
                         1분 +
                       </button>
                       <button
-                        onClick={() => setClockOffsetSeconds(prev => prev - 60)}
+                        onClick={() => setClockOffsetMilliseconds(prev => prev - 60000)}
                         className="btn btn-secondary"
                         style={{ padding: '8px 12px', fontSize: '14px' }}
                       >
@@ -307,7 +308,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
                       </button>
                       <button
                         onClick={() => {
-                          setClockOffsetSeconds(0);
+                          setClockOffsetMilliseconds(0);
                           setHasClockCalibration(false);
                         }}
                         className="btn btn-secondary"
