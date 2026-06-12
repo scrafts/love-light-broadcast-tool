@@ -219,21 +219,53 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
 
       {showWorshipClockFullScreen && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, minHeight: '100vh', background: '#020617', color: '#f8fafc', display: 'flex', flexDirection: 'column', padding: '32px', boxSizing: 'border-box' }}>
-          <div className="flex justify-between items-center" style={{ marginBottom: '24px' }}>
+          <div className="flex justify-between items-start" style={{ marginBottom: '24px', gap: '16px' }}>
             <div>
               <div style={{ color: '#94a3b8', fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>예배당 디지털 시계</div>
               <div style={{ color: '#38bdf8', fontSize: '16px', fontWeight: 700 }}>{worshipType}</div>
             </div>
-            <button
-              onClick={() => {
-                setShowWorshipClockFullScreen(false);
-                setIsClockCalibrationActive(false);
-              }}
-              className="btn btn-secondary"
-              style={{ padding: '12px 18px', fontSize: '15px' }}
-            >
-              닫기
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+              <div className="flex gap-2 items-center justify-end">
+                <button
+                  onClick={() => setShowWorshipTimeEditor(prev => !prev)}
+                  className="btn btn-secondary"
+                  style={{ padding: '12px 18px', fontSize: '15px' }}
+                >
+                  {showWorshipTimeEditor ? '수정 닫기' : '시작 시간 수정'}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWorshipClockFullScreen(false);
+                    setIsClockCalibrationActive(false);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ padding: '12px 18px', fontSize: '15px' }}
+                >
+                  닫기
+                </button>
+              </div>
+
+              {showWorshipTimeEditor && (
+                <div className="flex gap-2 items-center justify-end flex-wrap" style={{ padding: '10px 12px', backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px' }}>
+                  <label className="input-label" style={{ marginBottom: 0, whiteSpace: 'nowrap', fontSize: '15px' }}>예배 시작</label>
+                  <input
+                    type="time"
+                    value={effectiveWorshipTime}
+                    onChange={(e) => setCustomWorshipTime(e.target.value)}
+                    style={{ width: '150px', padding: '10px 12px', fontSize: '18px' }}
+                  />
+                  {customWorshipTime && (
+                    <button
+                      onClick={() => setCustomWorshipTime('')}
+                      className="btn btn-secondary"
+                      style={{ padding: '10px 12px', fontSize: '14px' }}
+                    >
+                      기본값
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '28px' }}>
@@ -255,35 +287,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
               >
                 {isClockCalibrationActive ? '측정 중' : '오차 측정'}
               </button>
-              <button
-                onClick={() => setShowWorshipTimeEditor(prev => !prev)}
-                className="btn btn-secondary"
-                style={{ padding: '14px 20px', fontSize: '16px' }}
-              >
-                {showWorshipTimeEditor ? '수정 닫기' : '시작 시간 수정'}
-              </button>
             </div>
-
-            {showWorshipTimeEditor && (
-              <div className="flex gap-2 items-center justify-center flex-wrap">
-                <label className="input-label" style={{ marginBottom: 0, whiteSpace: 'nowrap', fontSize: '15px' }}>예배 시작</label>
-                <input
-                  type="time"
-                  value={effectiveWorshipTime}
-                  onChange={(e) => setCustomWorshipTime(e.target.value)}
-                  style={{ width: '150px', padding: '10px 12px', fontSize: '18px' }}
-                />
-                {customWorshipTime && (
-                  <button
-                    onClick={() => setCustomWorshipTime('')}
-                    className="btn btn-secondary"
-                    style={{ padding: '10px 12px', fontSize: '14px' }}
-                  >
-                    기본값
-                  </button>
-                )}
-              </div>
-            )}
 
             <div style={{ color: isClockCalibrationActive ? '#fbbf24' : '#94a3b8', fontSize: '18px', lineHeight: 1.5, minHeight: '40px' }}>
               {isClockCalibrationActive
@@ -318,7 +322,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
                       </button>
                     </div>
                   )
-                  : '오차 측정 전입니다. 현재는 컴퓨터 시간과 같게 표시합니다.'}
+                  : '오차 측정 전입니다.'}
             </div>
           </div>
         </div>

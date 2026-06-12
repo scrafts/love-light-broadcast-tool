@@ -166,20 +166,21 @@ export default function App() {
             sectionHeader = '[헌금]';
         }
 
-        let closingPart = '';
-        if (sectionHeader && formattedClosing) {
-            closingPart = `\n\n${sectionHeader}\n\n${formattedClosing}`;
-        }
-
         const fridayNotice = isFriday ? `\n\n${FRIDAY_NOTICE}` : '';
         const verseParts = formatPassages(passages);
-
-        return `교회/단체 명 : ${CHURCH_NAME_EN}${fridayNotice}\n\n\n` +
-            `[경배와 찬양]\n\n${formattedSongs}\n\n` +
+        const sections = [
+            `[경배와 찬양]\n\n${formattedSongs}`,
             `[성경 봉독 및 말씀 선포]\n\n` +
             `제목: ${title}\n\n` +
-            `본문: ${verseParts}` +
-            `${closingPart}`;
+            `본문: ${verseParts}`,
+        ];
+
+        if (sectionHeader && formattedClosing) {
+            sections.push(`${sectionHeader}\n\n${formattedClosing}`);
+        }
+
+        return `교회/단체 명 : ${CHURCH_NAME_EN}${fridayNotice}\n\n\n` +
+            sections.join('\n\n\n');
     };
 
     return (
