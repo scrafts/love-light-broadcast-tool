@@ -68,10 +68,12 @@ export default function App() {
 
     // 찬양 목록
     const [songs, setSongs] = useState<string[]>(['']);
+    const [forcedNonHymnSongs, setForcedNonHymnSongs] = useState<boolean[]>([false]);
 
     // 후반부 찬양/헌금
     const [closingSong, setClosingSong] = useState('');
     const [isLovePraiseTeam, setIsLovePraiseTeam] = useState(false);
+    const [isClosingSongForcedNonHymn, setIsClosingSongForcedNonHymn] = useState(false);
 
     // UI 상태
     const [copyStatus, setCopyStatus] = useState<string>('');
@@ -99,22 +101,35 @@ export default function App() {
         setSongs(newSongs);
     };
 
+    const handleSongForceNonHymnChange = (index: number, value: boolean) => {
+        const newForced = [...forcedNonHymnSongs];
+        newForced[index] = value;
+        setForcedNonHymnSongs(newForced);
+    };
+
     const addSong = (index?: number) => {
         if (typeof index === 'number') {
             const newSongs = [...songs];
             newSongs.splice(index + 1, 0, ''); // 해당 인덱스 바로 뒤에 추가
             setSongs(newSongs);
+
+            const newForced = [...forcedNonHymnSongs];
+            newForced.splice(index + 1, 0, false);
+            setForcedNonHymnSongs(newForced);
         } else {
             setSongs([...songs, '']); // 맨 뒤에 추가
+            setForcedNonHymnSongs([...forcedNonHymnSongs, false]);
         }
     };
 
     const removeSong = (index: number) => {
         if (songs.length === 1) {
             setSongs(['']);
+            setForcedNonHymnSongs([false]);
             return;
         }
         setSongs(songs.filter((_, i) => i !== index));
+        setForcedNonHymnSongs(forcedNonHymnSongs.filter((_, i) => i !== index));
     };
 
     const copyToClipboard = async (text: string, label: string) => {
@@ -147,8 +162,11 @@ export default function App() {
 
     const generateDescriptionString = () => {
         const formattedSongs = songs
-            .filter(s => s.trim() !== '')
-            .map((s, i) => `${i + 1}. ${formatSongTitle(s)}`)
+            .map((song, songIndex) => ({ song, songIndex }))
+            .filter(({ song }) => song.trim() !== '')
+            .map(({ song, songIndex }, displayIndex) =>
+                `${displayIndex + 1}. ${formatSongTitle(song, { forceNonHymn: forcedNonHymnSongs[songIndex] })}`
+            )
             .join('\n\n');
 
         let formattedClosing = '';
@@ -156,7 +174,7 @@ export default function App() {
         if (isLovePraiseTeam) {
             formattedClosing = '사랑찬양단';
         } else if (closingSong.trim()) {
-            formattedClosing = formatClosingSong(closingSong);
+            formattedClosing = formatClosingSong(closingSong, { forceNonHymn: isClosingSongForcedNonHymn });
         }
 
         let sectionHeader = '';
@@ -199,7 +217,9 @@ export default function App() {
                 <div className="bottom-tools-row">
                     <SongList
                         songs={songs}
+                        forcedNonHymnSongs={forcedNonHymnSongs}
                         onSongChange={handleSongChange}
+                        onForceNonHymnChange={handleSongForceNonHymnChange}
                         onAddSong={addSong}
                         onRemoveSong={removeSong}
                     />
@@ -212,6 +232,8 @@ export default function App() {
                             setClosingSong={setClosingSong}
                             isLovePraiseTeam={isLovePraiseTeam}
                             setIsLovePraiseTeam={setIsLovePraiseTeam}
+                            isForcedNonHymn={isClosingSongForcedNonHymn}
+                            setIsForcedNonHymn={setIsClosingSongForcedNonHymn}
                         />
                     )}
 

@@ -11,16 +11,21 @@ interface ResultDisplayProps {
 
 const padTime = (value: number) => String(value).padStart(2, '0');
 
-const formatClockTime = (date: Date) => {
-  return `${padTime(date.getHours())}:${padTime(date.getMinutes())}:${padTime(date.getSeconds())}`;
-};
+const getClockTimeParts = (date: Date) => ({
+  main: `${padTime(date.getHours())}:${padTime(date.getMinutes())}:${padTime(date.getSeconds())}`,
+  milliseconds: String(date.getMilliseconds()).padStart(3, '0')
+});
 
 const formatOffset = (offsetMilliseconds: number) => {
-  const offsetSeconds = Math.round(offsetMilliseconds / 1000);
-  const absSeconds = Math.abs(offsetSeconds);
+  const absMilliseconds = Math.abs(offsetMilliseconds);
+  const absSeconds = Math.floor(absMilliseconds / 1000);
+  const remainingMilliseconds = absMilliseconds % 1000;
+  const displayValue = remainingMilliseconds
+    ? `${absSeconds}.${String(remainingMilliseconds).padStart(3, '0')}초`
+    : `${absSeconds}초`;
 
-  if (offsetSeconds > 0) return `디지털 시계가 컴퓨터보다 ${absSeconds}초 빠릅니다.`;
-  if (offsetSeconds < 0) return `디지털 시계가 컴퓨터보다 ${absSeconds}초 느립니다.`;
+  if (offsetMilliseconds > 0) return `디지털 시계가 컴퓨터보다 ${displayValue} 빠릅니다.`;
+  if (offsetMilliseconds < 0) return `디지털 시계가 컴퓨터보다 ${displayValue} 느립니다.`;
   return '디지털 시계와 컴퓨터 시간이 일치합니다.';
 };
 
@@ -45,6 +50,7 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
   const [customWorshipTime, setCustomWorshipTime] = useState('');
   const [showWorshipTimeEditor, setShowWorshipTimeEditor] = useState(false);
   const [showWorshipClockFullScreen, setShowWorshipClockFullScreen] = useState(false);
+  const [showClockMilliseconds, setShowClockMilliseconds] = useState(false);
 
   const isWednesdayWorship = worshipType.includes('수요');
   const isFridayWorship = worshipType.includes('금요');
@@ -62,12 +68,25 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
   }, [worshipType, date]);
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setNow(new Date());
-    }, 250);
+    let timeoutId = 0;
 
-    return () => window.clearInterval(intervalId);
-  }, []);
+    const scheduleNextTick = () => {
+      setNow(new Date());
+
+      if (showClockMilliseconds || isClockCalibrationActive) {
+        timeoutId = window.setTimeout(scheduleNextTick, 50);
+        return;
+      }
+
+      const adjustedTime = Date.now() + clockOffsetMilliseconds;
+      const delayToNextSecond = 1000 - (adjustedTime % 1000);
+      timeoutId = window.setTimeout(scheduleNextTick, delayToNextSecond + 5);
+    };
+
+    scheduleNextTick();
+
+    return () => window.clearTimeout(timeoutId);
+  }, [clockOffsetMilliseconds, isClockCalibrationActive, showClockMilliseconds]);
 
   useEffect(() => {
     if (!isClockCalibrationActive) return;
@@ -269,8 +288,21 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: '28px' }}>
-            <div style={{ fontSize: 'clamp(84px, 15vw, 220px)', lineHeight: 0.9, fontWeight: 900, letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums' }}>
-              {formatClockTime(adjustedNow)}
+            <div style={{ lineHeight: 0.9, fontWeight: 900, letterSpacing: '0.04em', fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'baseline', justifyContent: 'center', width: '100%' }}>
+              {(() => {
+                const clockTime = getClockTimeParts(adjustedNow);
+
+                return (
+                  <>
+                    <span style={{ fontSize: 'clamp(84px, 15vw, 220px)', display: 'inline-block', width: '8ch', textAlign: 'center' }}>{clockTime.main}</span>
+                    {showClockMilliseconds && (
+                      <span style={{ fontSize: 'clamp(36px, 6vw, 88px)', width: '4ch', textAlign: 'left', color: '#cbd5e1' }}>
+                        .{clockTime.milliseconds}
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {timeUntilWorship > 0 && (
@@ -287,6 +319,14 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
               >
                 {isClockCalibrationActive ? '측정 중' : '오차 측정'}
               </button>
+              <button
+                onClick={() => setShowClockMilliseconds(prev => !prev)}
+                className={`btn ${showClockMilliseconds ? 'btn-primary' : 'btn-secondary'}`}
+                title={showClockMilliseconds ? '밀리초 숨기기' : '밀리초 보기'}
+                style={{ padding: '14px 20px', fontSize: '16px' }}
+              >
+                {showClockMilliseconds ? 'ms 숨김' : 'ms 보기'}
+              </button>
             </div>
 
             <div style={{ color: isClockCalibrationActive ? '#fbbf24' : '#94a3b8', fontSize: '18px', lineHeight: 1.5, minHeight: '40px' }}>
@@ -294,32 +334,48 @@ export const ResultDisplay: React.FC<ResultDisplayProps> = ({ date, worshipType,
                 ? '뒤 시계의 분이 바뀌는 순간 스페이스바를 누르세요.'
                 : hasClockCalibration
                   ? (
-                    <div className="flex gap-2 items-center justify-center flex-wrap">
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                       <span>{formatOffset(clockOffsetMilliseconds)}</span>
-                      <button
-                        onClick={() => setClockOffsetMilliseconds(prev => prev + 60000)}
-                        className="btn btn-secondary"
-                        style={{ padding: '8px 12px', fontSize: '14px' }}
-                      >
-                        1분 +
-                      </button>
-                      <button
-                        onClick={() => setClockOffsetMilliseconds(prev => prev - 60000)}
-                        className="btn btn-secondary"
-                        style={{ padding: '8px 12px', fontSize: '14px' }}
-                      >
-                        1분 -
-                      </button>
-                      <button
-                        onClick={() => {
-                          setClockOffsetMilliseconds(0);
-                          setHasClockCalibration(false);
-                        }}
-                        className="btn btn-secondary"
-                        style={{ padding: '8px 12px', fontSize: '14px' }}
-                      >
-                        초기화
-                      </button>
+                      <div className="flex gap-2 items-center justify-center flex-wrap">
+                        <button
+                          onClick={() => setClockOffsetMilliseconds(prev => prev - 60000)}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '14px' }}
+                        >
+                          1분 -
+                        </button>
+                        <button
+                          onClick={() => setClockOffsetMilliseconds(prev => prev - 1000)}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '14px' }}
+                        >
+                          1초 -
+                        </button>
+                        <button
+                          onClick={() => {
+                            setClockOffsetMilliseconds(0);
+                            setHasClockCalibration(false);
+                          }}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '14px' }}
+                        >
+                          초기화
+                        </button>
+                        <button
+                          onClick={() => setClockOffsetMilliseconds(prev => prev + 1000)}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '14px' }}
+                        >
+                          1초 +
+                        </button>
+                        <button
+                          onClick={() => setClockOffsetMilliseconds(prev => prev + 60000)}
+                          className="btn btn-secondary"
+                          style={{ padding: '8px 12px', fontSize: '14px' }}
+                        >
+                          1분 +
+                        </button>
+                      </div>
                     </div>
                   )
                   : '오차 측정 전입니다.'}

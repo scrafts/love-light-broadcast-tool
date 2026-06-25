@@ -3,12 +3,21 @@ import { getHymnTitleByNumber, findHymnByTitle } from '../utils';
 
 interface SongListProps {
   songs: string[];
+  forcedNonHymnSongs: boolean[];
   onSongChange: (index: number, value: string) => void;
+  onForceNonHymnChange: (index: number, value: boolean) => void;
   onAddSong: (index?: number) => void;
   onRemoveSong: (index: number) => void;
 }
 
-export const SongList: React.FC<SongListProps> = ({ songs, onSongChange, onAddSong, onRemoveSong }) => {
+export const SongList: React.FC<SongListProps> = ({
+  songs,
+  forcedNonHymnSongs,
+  onSongChange,
+  onForceNonHymnChange,
+  onAddSong,
+  onRemoveSong
+}) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const prevLengthRef = useRef(songs.length);
   const focusIndexRef = useRef<number | null>(null);
@@ -47,8 +56,12 @@ export const SongList: React.FC<SongListProps> = ({ songs, onSongChange, onAddSo
       <div style={{ marginBottom: '0', overflowY: 'auto' }}>
         {songs.map((song, idx) => {
           const trimmed = song.trim();
+          const isForcedNonHymn = forcedNonHymnSongs[idx] ?? false;
+          const hymnTitleByNumber = getHymnTitleByNumber(trimmed);
           const hymnMatch = findHymnByTitle(trimmed);
-          const showDropdown = hymnMatch && hymnMatch.numbers.length > 1 && !song.includes('(새찬송가');
+          const hasHymnCandidate = Boolean(hymnMatch || hymnTitleByNumber);
+          const canForceNonHymn = Boolean(hymnMatch);
+          const showDropdown = !isForcedNonHymn && hymnMatch && hymnMatch.numbers.length > 1 && !song.includes('(새찬송가');
 
           return (
             <div key={idx} className="mb-4">
@@ -63,7 +76,7 @@ export const SongList: React.FC<SongListProps> = ({ songs, onSongChange, onAddSo
                   placeholder="찬양 제목 또는 번호"
                   style={{ flex: 1 }}
                 />
-                {(hymnMatch || getHymnTitleByNumber(trimmed)) && (
+                {!isForcedNonHymn && hasHymnCandidate && (
                   <span style={{
                     fontStyle: 'italic',
                     color: '#94a3b8',
@@ -74,8 +87,18 @@ export const SongList: React.FC<SongListProps> = ({ songs, onSongChange, onAddSo
                     overflow: 'hidden',
                     textOverflow: 'ellipsis'
                   }}>
-                    ({hymnMatch ? hymnMatch.numbers[0] : getHymnTitleByNumber(trimmed)})
+                    ({hymnMatch ? hymnMatch.numbers[0] : hymnTitleByNumber})
                   </span>
+                )}
+                {canForceNonHymn && (
+                  <button
+                    onClick={() => onForceNonHymnChange(idx, !isForcedNonHymn)}
+                    className={`btn ${isForcedNonHymn ? 'btn-primary' : 'btn-secondary'}`}
+                    title={isForcedNonHymn ? '찬송가 자동 변환 다시 사용' : '이 곡은 찬송가가 아니게 처리'}
+                    style={{ padding: '0 10px', minWidth: '86px', height: '40px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                  >
+                    {isForcedNonHymn ? '찬송가 사용' : '찬송가 제외'}
+                  </button>
                 )}
                 <button
                   onClick={() => handleAddClick(idx)}

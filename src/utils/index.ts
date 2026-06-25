@@ -43,10 +43,16 @@ export const findHymnByTitle = (input: string): { title: string; numbers: number
 };
 
 
+type FormatSongTitleOptions = {
+  forceNonHymn?: boolean;
+};
+
 // 찬양 제목 포맷팅 함수
-export const formatSongTitle = (title: string): string => {
+export const formatSongTitle = (title: string, options: FormatSongTitleOptions = {}): string => {
   if (!title) return "";
   const trimmedTitle = title.trim();
+
+  if (options.forceNonHymn) return title;
 
   // 이미 변환되었거나 포맷팅된 경우 건너뜀
   if (trimmedTitle.includes('(새찬송가')) return title;
@@ -85,10 +91,10 @@ export const formatSongTitle = (title: string): string => {
 };
 
 // 마무리 찬양 포맷팅 (특수문자 처리 - 호환성 유지)
-export const formatClosingSong = (input: string): string => {
+export const formatClosingSong = (input: string, options: FormatSongTitleOptions = {}): string => {
   if (input === '!') return '사랑찬양단';
   if (input.endsWith('!')) {
     return `${input.slice(0, -1).trim()} 사랑찬양단`;
   }
-  return formatSongTitle(input);
+  return formatSongTitle(input, options);
 };

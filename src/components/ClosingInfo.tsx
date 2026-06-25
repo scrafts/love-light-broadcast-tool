@@ -8,14 +8,25 @@ interface ClosingInfoProps {
   setClosingSong: (val: string) => void;
   isLovePraiseTeam: boolean;
   setIsLovePraiseTeam: (val: boolean) => void;
+  isForcedNonHymn: boolean;
+  setIsForcedNonHymn: (val: boolean) => void;
 }
 
 export const ClosingInfo: React.FC<ClosingInfoProps> = ({
-  isFriday, isSunday, closingSong, setClosingSong, isLovePraiseTeam, setIsLovePraiseTeam
+  isFriday,
+  isSunday,
+  closingSong,
+  setClosingSong,
+  isLovePraiseTeam,
+  setIsLovePraiseTeam,
+  isForcedNonHymn,
+  setIsForcedNonHymn
 }) => {
   const trimmed = closingSong.trim();
   const hymnTitleFromNumber = getHymnTitleByNumber(trimmed);
   const hymnMatchFromTitle = findHymnByTitle(trimmed);
+  const hasHymnCandidate = Boolean(hymnTitleFromNumber || hymnMatchFromTitle);
+  const canForceNonHymn = Boolean(hymnMatchFromTitle);
 
   return (
     <section className="glass-card">
@@ -37,7 +48,7 @@ export const ClosingInfo: React.FC<ClosingInfoProps> = ({
             className="w-full"
             style={isLovePraiseTeam ? { opacity: 0.5 } : {}}
           />
-          {!isLovePraiseTeam && (hymnTitleFromNumber || hymnMatchFromTitle) && (
+          {!isLovePraiseTeam && !isForcedNonHymn && hasHymnCandidate && (
             <div
               style={{
                 position: 'absolute',
@@ -62,6 +73,17 @@ export const ClosingInfo: React.FC<ClosingInfoProps> = ({
             </div>
           )}
         </div>
+
+        {!isLovePraiseTeam && canForceNonHymn && (
+          <button
+            onClick={() => setIsForcedNonHymn(!isForcedNonHymn)}
+            className={`btn ${isForcedNonHymn ? 'btn-primary' : 'btn-secondary'}`}
+            title={isForcedNonHymn ? '찬송가 자동 변환 다시 사용' : '이 곡은 찬송가가 아니게 처리'}
+            style={{ padding: '0 10px', minWidth: '86px', height: '40px', fontSize: '12px', whiteSpace: 'nowrap' }}
+          >
+            {isForcedNonHymn ? '찬송가 사용' : '찬송가 제외'}
+          </button>
+        )}
 
         {isSunday && (
           <label className="flex items-center cursor-pointer text-xs text-secondary whitespace-nowrap ml-auto">
